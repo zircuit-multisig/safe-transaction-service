@@ -5,12 +5,12 @@ from eth_abi import encode_single, encode_abi, decode_single
 from gnosis.eth import EthereumClient
 import time
 
+from gnosis.eth.multicall import Multicall
 from hexbytes import HexBytes
 
 node_url = 'https://staging-openethereum.mainnet.gnosisdev.com/'
 ethereum_client = EthereumClient(node_url)
-safe_address = ''
-multicall_address = '0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441'
+safe_address = '0xE41d2489571d322189246DaFA5ebDe1F4699F498'
 
 token_addresses = [
     '0xE41d2489571d322189246DaFA5ebDe1F4699F498',
@@ -113,8 +113,7 @@ queries = [
      'id': i + 1} for i, erc20_address in enumerate(token_addresses)]
 response = requests.post(ethereum_client.ethereum_node_url, json=queries).json()
 ethereum_client.erc20.get_balances(safe_address, token_addresses)
-print([(token_address, x['result']) for token_address, x in zip(token_addresses, response)])
-print(f'{time.time() - start:.4f} seconds elapsed')
+print(f'Batch Call {time.time() - start:.4f} seconds elapsed')
 
 # Test multicall
 data = encode_single('(address,bytes)[]', [[token_addresses[1], balance_of_data]])
@@ -129,11 +128,13 @@ print(
     )
 )
 
-abi = json.loads('[{"constant":true,"inputs":[],"name":"getCurrentBlockTimestamp","outputs":[{"name":"timestamp","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"components":[{"name":"target","type":"address"},{"name":"callData","type":"bytes"}],"name":"calls","type":"tuple[]"}],"name":"aggregate","outputs":[{"name":"blockNumber","type":"uint256"},{"name":"returnData","type":"bytes[]"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"getLastBlockHash","outputs":[{"name":"blockHash","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"getEthBalance","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"getCurrentBlockDifficulty","outputs":[{"name":"difficulty","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"getCurrentBlockGasLimit","outputs":[{"name":"gaslimit","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"getCurrentBlockCoinbase","outputs":[{"name":"coinbase","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"blockNumber","type":"uint256"}],"name":"getBlockHash","outputs":[{"name":"blockHash","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"}]')
-multicall_contract = ethereum_client.w3.eth.contract(multicall_address, abi=abi)
-aggregate_parameter = [{'target': token, 'callData': balance_of_data} for token in token_addresses]
+multicall = Multicall(ethereum_client)
+aggregate_parameters = [(token, balance_of_data) for token in token_addresses]
 
 start = time.time()
-blocknumber, result = multicall_contract.functions.aggregate(aggregate_parameter).call()
-print([decode_single('int', r) for r in result])
-print(f'{time.time() - start:.4f} seconds elapsed')
+blocknumber, result = multicall.aggregate(aggregate_parameters)
+print(f'Multicall {time.time() - start:.4f} seconds elapsed')
+
+start = time.time()
+results = multicall.try_aggregate(aggregate_parameters)
+print(f'Multicall try {time.time() - start:.4f} seconds elapsed')
