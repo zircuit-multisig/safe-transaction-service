@@ -33,6 +33,7 @@ from eth_typing import ChecksumAddress
 from hexbytes import HexBytes
 from model_utils.models import TimeStampedModel
 from packaging.version import Version
+from web3 import Web3
 from web3.types import EventData
 
 from gnosis.eth.constants import ERC20_721_TRANSFER_TOPIC
@@ -1524,9 +1525,9 @@ class SafeStatusQuerySet(models.QuerySet):
                         ) AS ss
                     WHERE pos = 1 AND owners @> ARRAY[%s]::bytea[];
                 """,
-                [owner_address, owner_address],
+                [HexBytes(owner_address), HexBytes(owner_address)],
             )
-            return {row[0] for row in cursor.fetchall()}
+            return {Web3.toChecksumAddress(row[0].hex()) for row in cursor.fetchall()}
 
     def last_for_every_address(self) -> QuerySet:
         return (
