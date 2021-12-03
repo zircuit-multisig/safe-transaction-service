@@ -75,8 +75,8 @@ class Migration(migrations.Migration):
             SET CONSTRAINTS "history_safecontract_safe_contract_id_4389cdbf_fk_history_s" IMMEDIATE;
             ALTER TABLE "history_safecontractdelegate" DROP CONSTRAINT "history_safecontract_safe_contract_id_4389cdbf_fk_history_s";
             ALTER TABLE "history_safecontractdelegate" ADD CONSTRAINT "history_safecontractdelegate_safe_contract_id_4389cdbf_fk" FOREIGN KEY ("safe_contract_id") REFERENCES "history_safecontract" ("address") DEFERRABLE INITIALLY DEFERRED;
-            ALTER TABLE "history_safecontract" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex')::bytea;
-            ALTER TABLE "history_safecontractdelegate" ALTER COLUMN "safe_contract_id" TYPE bytea USING DECODE(SUBSTRING("safe_contract_id", 3), 'hex');
+            -- ALTER TABLE "history_safecontract" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex')::bytea;
+            -- ALTER TABLE "history_safecontractdelegate" ALTER COLUMN "safe_contract_id" TYPE bytea USING DECODE(SUBSTRING("safe_contract_id", 3), 'hex');
             ALTER TABLE "history_safecontractdelegate" ALTER COLUMN "delegate" TYPE bytea USING DECODE(SUBSTRING("delegate", 3), 'hex');
             ALTER TABLE "history_safecontractdelegate" ALTER COLUMN "delegator" TYPE bytea USING DECODE(SUBSTRING("delegator", 3), 'hex');
             ALTER TABLE "history_safemastercopy" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex');
@@ -310,5 +310,14 @@ class Migration(migrations.Migration):
             field=gnosis.eth.django.models.EthereumAddressV2Field(
                 db_index=True, null=True
             ),
+        ),
+        migrations.RunSQL(
+            """
+            UPDATE "history_safecontract"
+                SET "address" = DECODE(SUBSTRING(ENCODE("address", 'escape'), 3), 'hex');
+            UPDATE "history_safecontractdelegate"
+                SET "safe_contract_id" = DECODE(SUBSTRING(ENCODE("address", 'safe_contract_id'), 3), 'hex');
+            """,
+            migrations.RunSQL.noop,
         ),
     ]
