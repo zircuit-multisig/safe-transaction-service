@@ -48,6 +48,75 @@ class Migration(migrations.Migration):
             """,
             reverse_sql=migrations.RunSQL.noop,
         ),
+        migrations.RunSQL(
+            """
+            ALTER TABLE "history_erc20transfer" ALTER COLUMN "_from" TYPE bytea USING DECODE(SUBSTRING("_from", 3), 'hex');
+            ALTER TABLE "history_erc20transfer" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex');
+            ALTER TABLE "history_erc20transfer" ALTER COLUMN "to" TYPE bytea USING DECODE(SUBSTRING("to", 3), 'hex');
+            ALTER TABLE "history_erc721transfer" ALTER COLUMN "_from" TYPE bytea USING DECODE(SUBSTRING("_from", 3), 'hex');
+            ALTER TABLE "history_erc721transfer" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex');
+            ALTER TABLE "history_erc721transfer" ALTER COLUMN "to" TYPE bytea USING DECODE(SUBSTRING("to", 3), 'hex');
+            ALTER TABLE "history_ethereumtx" ALTER COLUMN "_from" TYPE bytea USING DECODE(SUBSTRING("_from", 3), 'hex');
+            ALTER TABLE "history_ethereumtx" ALTER COLUMN "to" TYPE bytea USING DECODE(SUBSTRING("to", 3), 'hex');
+            ALTER TABLE "history_internaltx" ALTER COLUMN "_from" TYPE bytea USING DECODE(SUBSTRING("_from", 3), 'hex');
+            ALTER TABLE "history_internaltx" ALTER COLUMN "contract_address" TYPE bytea USING DECODE(SUBSTRING("contract_address", 3), 'hex');
+            ALTER TABLE "history_internaltx" ALTER COLUMN "refund_address" TYPE bytea USING DECODE(SUBSTRING("refund_address", 3), 'hex');
+            ALTER TABLE "history_internaltx" ALTER COLUMN "to" TYPE bytea USING DECODE(SUBSTRING("to", 3), 'hex');
+            ALTER TABLE "history_moduletransaction" ALTER COLUMN "module" TYPE bytea USING DECODE(SUBSTRING("module", 3), 'hex');
+            ALTER TABLE "history_moduletransaction" ALTER COLUMN "safe" TYPE bytea USING DECODE(SUBSTRING("safe", 3), 'hex');
+            ALTER TABLE "history_moduletransaction" ALTER COLUMN "to" TYPE bytea USING DECODE(SUBSTRING("to", 3), 'hex');
+            ALTER TABLE "history_multisigconfirmation" ALTER COLUMN "owner" TYPE bytea USING DECODE(SUBSTRING("owner", 3), 'hex');
+            ALTER TABLE "history_multisigtransaction" ALTER COLUMN "gas_token" TYPE bytea USING DECODE(SUBSTRING("gas_token", 3), 'hex');
+            ALTER TABLE "history_multisigtransaction" ALTER COLUMN "refund_receiver" TYPE bytea USING DECODE(SUBSTRING("refund_receiver", 3), 'hex');
+            ALTER TABLE "history_multisigtransaction" ALTER COLUMN "safe" TYPE bytea USING DECODE(SUBSTRING("safe", 3), 'hex');
+            ALTER TABLE "history_multisigtransaction" ALTER COLUMN "to" TYPE bytea USING DECODE(SUBSTRING("to", 3), 'hex');
+            ALTER TABLE "history_proxyfactory" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex');
+            ALTER TABLE "history_safecontract" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex');
+            ALTER TABLE "history_safecontractdelegate" ALTER COLUMN "safe_contract_id" TYPE bytea USING DECODE(SUBSTRING("safe_contract_id", 3), 'hex');
+            ALTER TABLE "history_safecontractdelegate" ALTER COLUMN "delegate" TYPE bytea USING DECODE(SUBSTRING("delegate", 3), 'hex');
+            ALTER TABLE "history_safecontractdelegate" ALTER COLUMN "delegator" TYPE bytea USING DECODE(SUBSTRING("delegator", 3), 'hex');
+            ALTER TABLE "history_safemastercopy" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex');
+            ALTER TABLE "history_safestatus" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex');
+            ALTER TABLE "history_safestatus" ALTER COLUMN "enabled_modules" TYPE bytea[] USING "enabled_modules"::bytea[];
+            ALTER TABLE "history_safestatus" ALTER COLUMN "fallback_handler" TYPE bytea USING DECODE(SUBSTRING("fallback_handler", 3), 'hex');
+            ALTER TABLE "history_safestatus" ALTER COLUMN "guard" TYPE bytea USING DECODE(SUBSTRING("guard", 3), 'hex');
+            ALTER TABLE "history_safestatus" ALTER COLUMN "master_copy" TYPE bytea USING DECODE(SUBSTRING("guard", 3), 'hex');
+            ALTER TABLE "history_safestatus" ALTER COLUMN "owners" TYPE bytea[] USING "owners"::bytea[];
+            ALTER TABLE "history_webhook" ALTER COLUMN "address" TYPE bytea USING DECODE(SUBSTRING("address", 3), 'hex'), ALTER COLUMN "address" DROP NOT NULL;
+            """
+        ),
+        migrations.RunSQL(
+            # Create function to migrate bytea[]
+            """
+            CREATE OR REPLACE FUNCTION array_address_parse(bytea[])
+            RETURNS bytea[]
+            AS
+            $$
+            DECLARE
+               arrBytes ALIAS FOR $1;
+               retVal bytea[];
+            BEGIN
+               FOR I IN array_lower(arrBytes, 1)..array_upper(arrBytes, 1) LOOP
+                 retVal[I] := decode(substring(encode(arrBytes[I], 'escape'), 3), 'hex');
+               END LOOP;
+            RETURN retVal;
+            END;
+            $$
+            LANGUAGE plpgsql
+               STABLE
+            RETURNS NULL ON NULL INPUT;
+
+            UPDATE "history_safestatus"
+            SET
+                owners = array_address_parse(owners),
+                enabled_modules = array_address_parse(enabled_modules);
+
+            UPDATE history_webhook SET address=null WHERE address='';
+
+            DROP FUNCTION array_address_parse(bytea[]);
+            """,
+            reverse_sql=migrations.RunSQL.noop,
+        ),
         migrations.AlterField(
             model_name="erc20transfer",
             name="_from",
@@ -233,9 +302,5 @@ class Migration(migrations.Migration):
             field=gnosis.eth.django.models.EthereumAddressV2Field(
                 db_index=True, null=True
             ),
-        ),
-        migrations.RunSQL(
-            "UPDATE history_webhook SET address=null WHERE address=''",
-            reverse_sql=migrations.RunSQL.noop,
         ),
     ]
