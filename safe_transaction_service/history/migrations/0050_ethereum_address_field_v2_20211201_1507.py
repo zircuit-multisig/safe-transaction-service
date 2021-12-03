@@ -26,7 +26,6 @@ class Migration(migrations.Migration):
                 history_internaltx_contract_address_134466b3_like,
                 history_internaltx_ethereum_tx_id_e6ac35ab_like,
                 history_internaltx_refund_address_09530831_like,
-                history_internaltxdecoded_function_name_333ae03e_like,
                 history_moduletransaction_module_5bf50dd1_like,
                 history_moduletransaction_safe_794cf9b4_like,
                 history_moduletransaction_to_041e4c7b_like,
@@ -43,7 +42,9 @@ class Migration(migrations.Migration):
                 history_safecontractdelegate_safe_contract_id_4389cdbf_like,
                 history_safemastercopy_address_d1f56f9e_like,
                 history_safestatus_address_68cd154d_like,
-                history_webhook_address_94c4e540_like
+                history_webhook_address_94c4e540_like,
+                notifications_firebasede_safecontract_id_acb5c418_like,
+                notifications_firebasedeviceowner_owner_025b0ed6_like
             """,
             reverse_sql=migrations.RunSQL.noop,
         ),

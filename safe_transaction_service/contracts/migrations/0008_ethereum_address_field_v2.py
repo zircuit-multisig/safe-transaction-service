@@ -8,10 +8,18 @@ import gnosis.eth.django.models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("contracts", "0006_contractabi_abi_hash"),
+        ("contracts", "0007_contract_trusted_for_delegate_call"),
     ]
 
     operations = [
+        migrations.RunSQL(
+            """
+            DROP INDEX IF EXISTS
+                notifications_firebasede_safecontract_id_acb5c418_like,
+                notifications_firebasedeviceowner_owner_025b0ed6_like
+            """,
+            reverse_sql=migrations.RunSQL.noop,
+        ),
         migrations.AlterField(
             model_name="contract",
             name="address",
