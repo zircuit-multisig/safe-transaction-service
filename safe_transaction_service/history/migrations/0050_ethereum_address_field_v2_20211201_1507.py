@@ -316,7 +316,7 @@ class Migration(migrations.Migration):
             UPDATE "history_safecontract"
                 SET "address" = DECODE(SUBSTRING(ENCODE("address", 'escape'), 3), 'hex');
             UPDATE "history_safecontractdelegate"
-                SET "safe_contract_id" = DECODE(SUBSTRING(ENCODE("address", 'safe_contract_id'), 3), 'hex');
+                SET "safe_contract_id" = DECODE(SUBSTRING(ENCODE("safe_contract_id", 'escape'), 3), 'hex');
             """,
             migrations.RunSQL.noop,
         ),
