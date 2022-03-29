@@ -63,11 +63,23 @@ def calculate_token_eth_price_task(
     )  # Expire in 15 minutes
     if key_was_set or force_recalculation:
         price_service = PriceServiceProvider()
-        eth_price = (
-            price_service.get_token_eth_value(token_address)
-            or price_service.get_token_usd_price(token_address)
-            / price_service.get_native_coin_usd_price()
+
+        token_eth_value: Optional[float] = price_service.get_token_eth_value(
+            token_address
         )
+        token_usd_price: Optional[float] = price_service.get_token_usd_price(
+            token_address
+        )
+
+        eth_price = None
+        if token_eth_value:
+            eth_price = price_service.get_token_eth_value(token_address)
+        elif token_usd_price:
+            eth_price = (
+                price_service.get_token_usd_price(token_address)
+                / price_service.get_native_coin_usd_price()
+            )
+
         if not eth_price:  # Try composed oracles
             if underlying_tokens := price_service.get_underlying_tokens(token_address):
                 eth_price = 0

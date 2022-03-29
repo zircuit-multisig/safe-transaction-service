@@ -56,7 +56,7 @@ class FiatCode(Enum):
 
 @dataclass
 class FiatPriceWithTimestamp:
-    fiat_price: float
+    fiat_price: Optional[float]
     fiat_code: FiatCode
     timestamp: datetime
 
@@ -226,7 +226,7 @@ class PriceService:
 
     @cachedmethod(cache=operator.attrgetter("cache_token_eth_value"))
     @cache_memoize(60 * 30, prefix="balances-get_token_eth_value")  # 30 minutes
-    def get_token_eth_value(self, token_address: ChecksumAddress) -> float:
+    def get_token_eth_value(self, token_address: ChecksumAddress) -> Optional[float]:
         """
         Uses multiple decentralized and centralized oracles to get token prices
 
@@ -261,11 +261,11 @@ class PriceService:
                 )
 
         logger.warning("Cannot find eth value for token-address=%s", token_address)
-        return 0.0
+        return None  # TODO: we should not cache if value is None
 
     @cachedmethod(cache=operator.attrgetter("cache_token_usd_value"))
     @cache_memoize(60 * 30, prefix="balances-get_token_usd_price")  # 30 minutes
-    def get_token_usd_price(self, token_address: ChecksumAddress) -> float:
+    def get_token_usd_price(self, token_address: ChecksumAddress) -> Optional[float]:
         """
         :param token_address:
         :return: usd value for a given `token_address` using Curve, if not use Coingecko as last resource
@@ -275,7 +275,7 @@ class PriceService:
                 return self.coingecko_client.get_token_price(token_address)
             except CannotGetPrice:
                 pass
-        return 0.0
+        return None  # TODO: we should not cache if value is None
 
     @cachedmethod(cache=operator.attrgetter("cache_underlying_token"))
     @cache_memoize(60 * 30, prefix="balances-get_underlying_tokens")  # 30 minutes
@@ -298,7 +298,7 @@ class PriceService:
 
     def get_cached_token_eth_values(
         self, token_addresses: Sequence[ChecksumAddress]
-    ) -> Iterator[EthValueWithTimestamp]:
+    ) -> Iterator[Optional[EthValueWithTimestamp]]:
         """
         Get token eth prices with timestamp of calculation if ready on cache. If not, schedule tasks to do
         the calculation so next time is available on cache and return `0.` and current datetime
@@ -327,7 +327,7 @@ class PriceService:
                 if task_result.ready():
                     yield task_result.get()
                 else:
-                    yield EthValueWithTimestamp(0.0, timezone.now())
+                    yield None
 
     def get_cached_usd_values(
         self, token_addresses: Sequence[ChecksumAddress]
@@ -338,17 +338,22 @@ class PriceService:
         :param token_addresses:
         :return: eth prices with timestamp if ready on cache, `0.` and None otherwise
         """
+        eth_price = None
         try:
             eth_price = self.get_native_coin_usd_price()
         except CannotGetPrice:
             logger.warning("Cannot get network ether price", exc_info=True)
-            eth_price = 0
 
         for token_eth_values_with_timestamp in self.get_cached_token_eth_values(
             token_addresses
         ):
+            fiat_value = (
+                eth_price * token_eth_values_with_timestamp.eth_value
+                if eth_price
+                else None
+            )
             yield FiatPriceWithTimestamp(
-                eth_price * token_eth_values_with_timestamp.eth_value,
+                fiat_value,
                 FiatCode.USD,
                 token_eth_values_with_timestamp.timestamp,
             )
