@@ -2207,6 +2207,16 @@ class TestViews(SafeTestCaseMixin, APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(SafeContractDelegate.objects.count(), 0)
 
+    def _get_unique_hash(self, obj) -> str:
+        if hasattr(obj, "log_index"):
+            return Web3.keccak(
+                text=f"transfer_{obj.ethereum_tx_id}_{obj.log_index}"
+            ).hex()
+        else:
+            return Web3.keccak(
+                text=f"transfer_{obj.ethereum_tx_id}_{obj.trace_address}"
+            ).hex()
+
     def test_incoming_transfers_view(self):
         safe_address = Account.create().address
         response = self.client.get(
@@ -2219,6 +2229,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
         value = 2
         InternalTxFactory(to=safe_address, value=0)
         internal_tx = InternalTxFactory(to=safe_address, value=value)
+        internal_tx.unique_hash = self._get_unique_hash(internal_tx)
         InternalTxFactory(to=Account.create().address, value=value)
         response = self.client.get(
             reverse("v1:history:incoming-transfers", args=(safe_address,)),
@@ -2259,6 +2270,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
 
         token_value = 6
         ethereum_erc_20_event = ERC20TransferFactory(to=safe_address, value=token_value)
+        ethereum_erc_20_event.unique_hash = self._get_unique_hash(ethereum_erc_20_event)
         token = TokenFactory(address=ethereum_erc_20_event.address)
         response = self.client.get(
             reverse("v1:history:incoming-transfers", args=(safe_address,)),
@@ -2274,6 +2286,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "executionDate": ethereum_erc_20_event.ethereum_tx.block.timestamp.isoformat().replace(
                         "+00:00", "Z"
                     ),
+                    "uniqueHash": ethereum_erc_20_event.unique_hash,
                     "transactionHash": ethereum_erc_20_event.ethereum_tx_id,
                     "blockNumber": ethereum_erc_20_event.ethereum_tx.block_id,
                     "to": safe_address,
@@ -2295,6 +2308,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "executionDate": internal_tx.ethereum_tx.block.timestamp.isoformat().replace(
                         "+00:00", "Z"
                     ),
+                    "uniqueHash": internal_tx.unique_hash,
                     "transactionHash": internal_tx.ethereum_tx_id,
                     "blockNumber": internal_tx.ethereum_tx.block_id,
                     "to": safe_address,
@@ -2311,6 +2325,9 @@ class TestViews(SafeTestCaseMixin, APITestCase):
         ethereum_erc_721_event = ERC721TransferFactory(
             to=safe_address, token_id=token_id
         )
+        ethereum_erc_721_event.unique_hash = self._get_unique_hash(
+            ethereum_erc_721_event
+        )
         response = self.client.get(
             reverse("v1:history:incoming-transfers", args=(safe_address,)),
             format="json",
@@ -2325,6 +2342,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "executionDate": ethereum_erc_721_event.ethereum_tx.block.timestamp.isoformat().replace(
                         "+00:00", "Z"
                     ),
+                    "uniqueHash": ethereum_erc_721_event.unique_hash,
                     "transactionHash": ethereum_erc_721_event.ethereum_tx_id,
                     "blockNumber": ethereum_erc_721_event.ethereum_tx.block_id,
                     "to": safe_address,
@@ -2339,6 +2357,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "executionDate": ethereum_erc_20_event.ethereum_tx.block.timestamp.isoformat().replace(
                         "+00:00", "Z"
                     ),
+                    "uniqueHash": ethereum_erc_20_event.unique_hash,
                     "transactionHash": ethereum_erc_20_event.ethereum_tx_id,
                     "blockNumber": ethereum_erc_20_event.ethereum_tx.block_id,
                     "to": safe_address,
@@ -2360,6 +2379,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "executionDate": internal_tx.ethereum_tx.block.timestamp.isoformat().replace(
                         "+00:00", "Z"
                     ),
+                    "uniqueHash": internal_tx.unique_hash,
                     "transactionHash": internal_tx.ethereum_tx_id,
                     "blockNumber": internal_tx.ethereum_tx.block_id,
                     "to": safe_address,
@@ -2384,6 +2404,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
         value = 2
         InternalTxFactory(to=safe_address, value=0)
         internal_tx = InternalTxFactory(to=safe_address, value=value)
+        internal_tx.unique_hash = self._get_unique_hash(internal_tx)
         InternalTxFactory(to=Account.create().address, value=value)
         response = self.client.get(
             reverse("v1:history:transfers", args=(safe_address,)), format="json"
@@ -2432,6 +2453,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
         response = self.client.get(
             reverse("v1:history:transfers", args=(safe_address,)), format="json"
         )
+        internal_tx_2.unique_hash = self._get_unique_hash(internal_tx_2)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 2)
         self.assertEqual(response.data["results"][0]["value"], str(value))
@@ -2441,6 +2463,10 @@ class TestViews(SafeTestCaseMixin, APITestCase):
         ethereum_erc_20_event = ERC20TransferFactory(to=safe_address, value=token_value)
         ethereum_erc_20_event_2 = ERC20TransferFactory(
             _from=safe_address, value=token_value
+        )
+        ethereum_erc_20_event.unique_hash = self._get_unique_hash(ethereum_erc_20_event)
+        ethereum_erc_20_event_2.unique_hash = self._get_unique_hash(
+            ethereum_erc_20_event_2
         )
         token = TokenFactory(address=ethereum_erc_20_event.address)
         response = self.client.get(
@@ -2455,6 +2481,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "+00:00", "Z"
                 ),
                 "blockNumber": ethereum_erc_20_event_2.ethereum_tx.block_id,
+                "uniqueHash": ethereum_erc_20_event_2.unique_hash,
                 "transactionHash": ethereum_erc_20_event_2.ethereum_tx_id,
                 "to": ethereum_erc_20_event_2.to,
                 "value": str(token_value),
@@ -2469,6 +2496,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "+00:00", "Z"
                 ),
                 "blockNumber": ethereum_erc_20_event.ethereum_tx.block_id,
+                "uniqueHash": ethereum_erc_20_event.unique_hash,
                 "transactionHash": ethereum_erc_20_event.ethereum_tx_id,
                 "to": safe_address,
                 "value": str(token_value),
@@ -2490,6 +2518,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "+00:00", "Z"
                 ),
                 "blockNumber": internal_tx_2.ethereum_tx.block_id,
+                "uniqueHash": internal_tx_2.unique_hash,
                 "transactionHash": internal_tx_2.ethereum_tx_id,
                 "to": internal_tx_2.to,
                 "value": str(value),
@@ -2504,6 +2533,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "+00:00", "Z"
                 ),
                 "blockNumber": internal_tx.ethereum_tx.block_id,
+                "uniqueHash": internal_tx.unique_hash,
                 "transactionHash": internal_tx.ethereum_tx_id,
                 "to": safe_address,
                 "value": str(value),
@@ -2519,8 +2549,14 @@ class TestViews(SafeTestCaseMixin, APITestCase):
         ethereum_erc_721_event = ERC721TransferFactory(
             to=safe_address, token_id=token_id
         )
+        ethereum_erc_721_event.unique_hash = self._get_unique_hash(
+            ethereum_erc_721_event
+        )
         ethereum_erc_721_event_2 = ERC721TransferFactory(
             _from=safe_address, token_id=token_id
+        )
+        ethereum_erc_721_event_2.unique_hash = self._get_unique_hash(
+            ethereum_erc_721_event_2
         )
         response = self.client.get(
             reverse("v1:history:transfers", args=(safe_address,)), format="json"
@@ -2534,6 +2570,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "+00:00", "Z"
                 ),
                 "transactionHash": ethereum_erc_721_event_2.ethereum_tx_id,
+                "uniqueHash": ethereum_erc_721_event_2.unique_hash,
                 "blockNumber": ethereum_erc_721_event_2.ethereum_tx.block_id,
                 "to": ethereum_erc_721_event_2.to,
                 "value": None,
@@ -2548,6 +2585,7 @@ class TestViews(SafeTestCaseMixin, APITestCase):
                     "+00:00", "Z"
                 ),
                 "transactionHash": ethereum_erc_721_event.ethereum_tx_id,
+                "uniqueHash": ethereum_erc_721_event.unique_hash,
                 "blockNumber": ethereum_erc_721_event.ethereum_tx.block_id,
                 "to": safe_address,
                 "value": None,

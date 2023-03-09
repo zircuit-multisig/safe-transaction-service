@@ -120,6 +120,8 @@ class TransferDict(TypedDict):
     execution_date: datetime.datetime
     _token_id: int
     token_address: str
+    _log_index: int
+    _trace_address: str
 
 
 class BulkCreateSignalMixin:
@@ -504,6 +506,8 @@ class ERC20TransferQuerySet(TokenTransferQuerySet):
             execution_date=F("timestamp"),
             _token_id=RawSQL("NULL::numeric", ()),
             token_address=F("address"),
+            _log_index=F("log_index"),
+            _trace_address=RawSQL("NULL", ()),
         )
 
 
@@ -614,6 +618,8 @@ class ERC721TransferQuerySet(TokenTransferQuerySet):
             execution_date=F("timestamp"),
             _token_id=F("token_id"),
             token_address=F("address"),
+            _log_index=F("log_index"),
+            _trace_address=RawSQL("NULL", ()),
         )
 
 
@@ -750,6 +756,8 @@ class InternalTxQuerySet(models.QuerySet):
             execution_date=F("timestamp"),
             _token_id=RawSQL("NULL::numeric", ()),
             token_address=Value(None, output_field=EthereumAddressV2Field()),
+            _log_index=RawSQL("NULL::numeric", ()),
+            _trace_address=F("trace_address"),
         )
 
     def ether_txs_for_address(self, address: str):
@@ -827,6 +835,8 @@ class InternalTxQuerySet(models.QuerySet):
             "execution_date",
             "_token_id",
             "token_address",
+            "_log_index",
+            "_trace_address",
         ]
         return (
             ether_queryset.values(*values)

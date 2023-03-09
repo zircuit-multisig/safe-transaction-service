@@ -15,6 +15,7 @@ from gnosis.eth.django.serializers import (
     HexadecimalField,
     Sha3HashField,
 )
+from gnosis.eth.utils import fast_keccak_hex
 from gnosis.safe import Safe
 from gnosis.safe.safe_signature import SafeSignature, SafeSignatureType
 from gnosis.safe.serializers import SafeMultisigTxSerializerV1
@@ -731,6 +732,7 @@ class TransferResponseSerializer(serializers.Serializer):
     value = serializers.CharField(allow_null=True, source="_value")
     token_id = serializers.CharField(allow_null=True, source="_token_id")
     token_address = EthereumAddressField(allow_null=True, default=None)
+    unique_hash = serializers.SerializerMethodField()
 
     def get_fields(self):
         result = super().get_fields()
@@ -748,6 +750,16 @@ class TransferResponseSerializer(serializers.Serializer):
             if obj["_token_id"] is not None:
                 return TransferType.ERC721_TRANSFER.name
             return TransferType.UNKNOWN.name
+
+    def get_unique_hash(self, obj: TransferDict) -> str:
+        if self.get_type(obj) == "ETHER_TRANSFER":
+            return "0x" + fast_keccak_hex(
+                f'transfer_{obj["transaction_hash"]}_{obj["_trace_address"]}'.encode()
+            )
+        else:
+            return "0x" + fast_keccak_hex(
+                f'transfer_{obj["transaction_hash"]}_{obj["_log_index"]}'.encode()
+            )
 
     def validate(self, attrs):
         super().validate(attrs)
