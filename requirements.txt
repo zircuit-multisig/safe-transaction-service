@@ -33,6 +33,6 @@ psycogreen==1.0.2
 psycopg2==2.9.9
 redis==5.0.6
 requests==2.32.3
-git+https://github.com/protofire/safe-eth-py.git@zircuit-network#egg=safe-eth-py
+git+https://github.com/zircuit-multisig/safe-eth-py.git@zircuit-network#egg=safe-eth-py
 #safe-eth-py[django]==6.0.0b30
 web3==6.19.0
