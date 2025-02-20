@@ -34,6 +34,6 @@ psycopg2==2.9.10
 redis==5.0.8
 requests==2.32.3
 # safe-eth-py[django]==6.0.0b37
-git+https://github.com/zircuit-multisig/safe-eth-py.git@v6.4#egg=safe-eth-py
+git+https://github.com/zircuit-multisig/safe-eth-py.git@v6.4.0#egg=safe-eth-py
 # safe-eth-py[django]==6.0.0b37
 web3==6.20.2
